@@ -57,6 +57,10 @@ $( document ).ready(function() {
                          // Endpoint not running, local save
                          error: function(err) {
 
+                             if (err.status == 200){
+                                 document.location = "/next";
+                             }
+
                              // If error, assue local save
                              jsPsych.data.localSave('digit-span_results.csv', 'csv');
                          }
