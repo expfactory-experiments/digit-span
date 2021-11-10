@@ -1,0 +1,50 @@
+name: Build Experiment Container
+
+on:
+  # Always test on pull request
+  pull_request: []
+
+  # Deploy on merge to main
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-test-containers:
+    runs-on: ubuntu-latest
+    name: Build Container
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2        
+
+      - name: Build Experiment Factory Container
+        env:
+          dirname: ${{ github.event.repository.name }}
+          owner: ${{ github.repository_owner }}
+        run: |
+          # Move one directory up
+          cd ../         
+          docker run -v $PWD:/data quay.io/vanessa/expfactory-builder build /data/${dirname}
+          printf "Files generated are:\n"
+          ls
+          docker build -t ghcr.io/${owner}/${dirname} .
+          docker tag ghcr.io/${owner}/${dirname}:latest ghcr.io/${owner}/${dirname}:${GITHUB_SHA::8} 
+          docker images | grep ghcr
+
+      - name: Log in to GitHub Container Registry
+        if: (github.event_name != 'pull_request')
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Deploy Test Container
+        if: (github.event_name != 'pull_request')
+        env:
+          dirname: ${{ github.event.repository.name }}
+          owner: ${{ github.repository_owner }}
+        run: |
+            docker images
+            docker push ghcr.io/${owner}/${dirname}:latest
+            docker push ghcr.io/${owner}/${dirname}:${GITHUB_SHA::8}
